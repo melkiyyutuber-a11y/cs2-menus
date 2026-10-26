@@ -1,0 +1,41 @@
+name: Rebuild for KHook Metamod
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    env:
+      HL2SDK_ROOT: "${{ github.workspace }}/external"
+      MMS_PATH: "${{ github.workspace }}/external/metamod-source"
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Dependencies
+        run: |
+          sudo apt-get update -qy
+          sudo apt-get install -y clang lld binutils python3-pip zip
+          git clone https://github.com/alliedmodders/ambuild.git
+          pip install ./ambuild
+          mkdir -p external
+          cd external
+          git clone --recursive --branch master --single-branch https://github.com/alliedmodders/metamod-source.git
+          git clone --recursive --branch cs2 --single-branch https://github.com/alliedmodders/hl2sdk.git hl2sdk-cs2
+          cd ../..
+          git clone https://github.com/pisex/SchemaEntity.git || true
+      - name: Build
+        run: |
+          MANIFESTS=./hl2sdk-manifests
+          [ -d hl2sdk-manifests ] || MANIFESTS=$MMS_PATH/hl2sdk-manifests
+          mkdir build && cd build
+          python3 ../configure.py -s cs2 --targets x86_64 --enable-optimize --hl2sdk-manifests=../$MANIFESTS --mms_path=$MMS_PATH --hl2sdk-root=$HL2SDK_ROOT || \
+          python3 ../configure.py -s cs2 --targets x86_64 --enable-optimize --hl2sdk-manifests=$MANIFESTS --mms_path=$MMS_PATH --hl2sdk-root=$HL2SDK_ROOT
+          ambuild
+      - name: Pack
+        run: cd build/package && zip -r ../../out.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: out.zip
