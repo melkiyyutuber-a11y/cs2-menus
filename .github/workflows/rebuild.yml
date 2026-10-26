@@ -23,6 +23,8 @@ jobs:
           cd external
           git clone --recursive --branch master --single-branch https://github.com/alliedmodders/metamod-source.git
           git clone --recursive --branch cs2 --single-branch https://github.com/alliedmodders/s2sdk.git hl2sdk-cs2
+          # SDK на момент до переименования полей схемы (21.10), под который написан SchemaEntity Pisex
+          (cd hl2sdk-cs2 && git checkout 6d7934b58 && git submodule update --init --recursive)
           cd ../..
           git clone https://github.com/pisex/SchemaEntity.git || true
       - name: Build
