@@ -8,9 +8,12 @@ missing = sorted(set(re.findall(r"fatal error: '([^']+)' file not found", log)))
 if not missing:
     sys.exit(1)
 index = {}
-for dp, _, fs in os.walk(sdk):
-    for f in fs:
-        index.setdefault(f, os.path.join(dp, f))
+for root in (sdk, "external/metamod-source"):
+    for dp, _, fs in os.walk(root):
+        if "/.git" in dp:
+            continue
+        for f in fs:
+            index.setdefault(f, os.path.join(dp, f))
 fixed = 0
 for inc in missing:
     found = index.get(os.path.basename(inc))
