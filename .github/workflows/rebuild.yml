@@ -28,6 +28,12 @@ jobs:
       - name: Build
         run: |
           git clone https://github.com/alliedmodders/hl2sdk-manifests.git external/hl2sdk-manifests
+          # новый SDK разнёс .proto по папкам — собираем их по старому пути, который ждут скрипты Pisex
+          P=external/hl2sdk-cs2/thirdparty/game_protobufs/csgo
+          mkdir -p $P
+          find external/hl2sdk-cs2 -name '*.proto' -not -path "*/game_protobufs/csgo/*" | while read f; do
+            b=$(basename "$f"); [ -e "$P/$b" ] || ln -s "$(realpath "$f")" "$P/$b"; done
+          ls $P | head -50
           mkdir build && cd build
           python3 ../configure.py -s cs2 --targets x86_64 --enable-optimize --hl2sdk-manifests=$GITHUB_WORKSPACE/external/hl2sdk-manifests --mms_path=$MMS_PATH --hl2sdk-root=$HL2SDK_ROOT
           ambuild
