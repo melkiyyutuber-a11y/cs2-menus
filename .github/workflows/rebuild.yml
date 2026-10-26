@@ -22,7 +22,7 @@ jobs:
           mkdir -p external
           cd external
           git clone --recursive --branch master --single-branch https://github.com/alliedmodders/metamod-source.git
-          git clone --recursive --branch cs2 --single-branch https://github.com/alliedmodders/hl2sdk.git hl2sdk-cs2
+          git clone --recursive --branch cs2 --single-branch https://github.com/alliedmodders/s2sdk.git hl2sdk-cs2
           cd ../..
           git clone https://github.com/pisex/SchemaEntity.git || true
       - name: Build
@@ -34,6 +34,28 @@ jobs:
           find external/hl2sdk-cs2 -name '*.proto' -not -path "*/game_protobufs/csgo/*" | while read f; do
             b=$(basename "$f"); [ -e "$P/$b" ] || ln -s "$(realpath "$f")" "$P/$b"; done
           ls $P | head -50
+          # .cpp из SDK, на которые ссылается AMBuildScript, но которых нет: ищем по имени, иначе пустая заглушка
+          python3 - <<'EOF'
+          import os, re
+          sdk = "external/hl2sdk-cs2"
+          src = open("AMBuildScript").read()
+          index = {}
+          for dp, _, fs in os.walk(sdk):
+              for f in fs:
+                  index.setdefault(f, os.path.join(dp, f))
+          for m in re.finditer(r"os\.path\.join\(sdk\['path'\],\s*((?:'[^']+',?\s*)+)\)", src):
+              parts = re.findall(r"'([^']+)'", m.group(1))
+              want = os.path.join(sdk, *parts)
+              if not want.endswith((".cpp", ".cc")) or os.path.exists(want):
+                  continue
+              os.makedirs(os.path.dirname(want), exist_ok=True)
+              found = index.get(parts[-1])
+              if found:
+                  os.symlink(os.path.realpath(found), want); print("link", want, "->", found)
+              else:
+                  open(want, "w").write("// stub
+"); print("stub", want)
+          EOF
           mkdir build && cd build
           python3 ../configure.py -s cs2 --targets x86_64 --enable-optimize --hl2sdk-manifests=$GITHUB_WORKSPACE/external/hl2sdk-manifests --mms_path=$MMS_PATH --hl2sdk-root=$HL2SDK_ROOT
           ambuild
