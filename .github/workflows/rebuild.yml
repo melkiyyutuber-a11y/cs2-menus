@@ -38,7 +38,12 @@ jobs:
           python3 fix_sdk.py
           mkdir build && cd build
           python3 ../configure.py -s cs2 --targets x86_64 --enable-optimize --hl2sdk-manifests=$GITHUB_WORKSPACE/external/hl2sdk-manifests --mms_path=$MMS_PATH --hl2sdk-root=$HL2SDK_ROOT
-          ambuild
+          # до 20 проходов: при «заголовок не найден» ставим ссылку на новый путь и собираем снова
+          for i in $(seq 1 20); do
+            if ambuild > ../build.log 2>&1; then echo "BUILD OK"; exit 0; fi
+            (cd .. && python3 fix_inc.py build.log) || { grep -E "error" ../build.log | head -60; exit 1; }
+          done
+          exit 1
       - name: Pack
         run: cd build/package && zip -r ../../out.zip .
       - uses: actions/upload-artifact@v4
